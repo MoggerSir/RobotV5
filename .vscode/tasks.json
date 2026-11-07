@@ -1,0 +1,27 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "VEX: compilar RobotV5",
+      "type": "process",
+      "command": "/usr/bin/make",
+      "args": [
+        "P=RobotV5",
+        "T=/home/orb/.config/Code/User/globalStorage/vexrobotics.vexcode/sdk/cpp/V5/V5_20240802_15_00_00"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PATH": "/home/orb/.config/Code/User/globalStorage/vexrobotics.vexcode/tools/cpp/toolchain_linux64/clang/bin:/home/orb/.config/Code/User/globalStorage/vexrobotics.vexcode/tools/cpp/toolchain_linux64/gcc/bin:${env:PATH}"
+        }
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [
+        "$gcc"
+      ]
+    }
+  ]
+}
