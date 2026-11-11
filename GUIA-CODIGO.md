@@ -2,8 +2,7 @@
 
 Empieza por `include/robot-config.h` para ver los puertos y luego abre
 `src/main.cpp`: es el archivo que conecta todas las piezas del programa.
-Los comentarios empiezan por `//` en C++ y por `#` en los archivos de compilación
-y el script de Linux. Explican el código; el robot no los ejecuta.
+El código no lleva comentarios: esta guía explica qué hace cada parte.
 
 ## Qué hace cada archivo
 
@@ -26,12 +25,12 @@ y el script de Linux. Explican el código; el robot no los ejecuta.
 ## Qué ocurre al ejecutar RobotV5
 
 1. Se crean las representaciones del Brain, el mando y los seis motores.
-2. `main()` prepara los grupos de ruedas y una protección independiente para cada mecanismo.
-3. El robot arranca bloqueado. Para habilitarlo se pulsa **B**, con los joysticks
-   centrados y R1/L1/R2 sueltos. **X** vuelve a frenar y bloquear.
+2. `main()` prepara los grupos de ruedas, la protección del brazo y el hilo que dibuja la pantalla.
+3. El robot arranca habilitado. **X** frena y bloquea; para rearmar se pulsa **B**,
+   con los joysticks centrados y R1/L1/R2 sueltos.
 4. El bucle lee el mando y comprueba que sigan presentes el control y los seis motores.
-5. Si está habilitado, calcula la velocidad de ruedas y consulta las protecciones del brazo y la pinza.
-6. Actualiza el diagnóstico una de cada diez vueltas, espera 20 milisegundos y repite.
+5. Si está habilitado, calcula la velocidad de ruedas, consulta la protección del brazo y mueve la pinza directamente.
+6. Comparte el estado con el hilo de pantalla, que lo dibuja cada 200 ms; el control espera 10 milisegundos y repite.
 
 Que el programa compile o que un motor aparezca detectado no demuestra que su
 sentido, su montaje o la mecánica sean correctos. La falta de movimiento de la
@@ -94,5 +93,4 @@ una latencia física exacta: las llamadas al SDK y el funcionamiento del Brain t
 - Los archivos `vex/*.mk` son soporte del SDK; no son ajustes para conducir.
 
 Para cargar cambios de funcionamiento hay que compilar y volver a descargar al
-Brain. Los comentarios por sí solos solo ayudan a leer el proyecto y no cambian
-cómo se mueve el robot.
+Brain.

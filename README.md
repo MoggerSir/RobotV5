@@ -3,7 +3,7 @@
 Codigo C++ para VS Code y la extension oficial VEX Robotics.
 
 Para entender el programa desde cero, abre [GUIA-CODIGO.md](GUIA-CODIGO.md).
-Los archivos de código incluyen comentarios en español sencillo.
+El código se publica sin comentarios; GUIA-CODIGO.md y este README explican su funcionamiento.
 
 Ultima carga verificada el 6 de noviembre de 2026 en el Brain V5, programa
 RobotV5, ranura 3, mediante el control conectado por USB y enlace inalambrico.
@@ -24,8 +24,8 @@ de la pinza aun no tiene causa confirmada.
 | Joystick izquierdo derecha/izquierda | Girar; tambien permite giro parado |
 | R2 + joystick izquierdo hacia adelante | Sprint |
 | A mantenido | Manejo lento; tiene prioridad sobre R2 |
-| X | Frenar ruedas y bloquear el manejo; brazo y garra retienen posicion |
-| B, con ambos joysticks centrados y R1/L1/R2 sueltos | Armar al iniciar o rearmar tras X/desconexion |
+| X | Frenar ruedas y bloquear el manejo; brazo y garra quedan en freno pasivo |
+| B, con ambos joysticks centrados y R1/L1/R2 sueltos | Rearmar tras X/desconexion (al iniciar el programa ya queda habilitado) |
 | Joystick derecho arriba/abajo | Subir / bajar brazo, con velocidad proporcional |
 | R1 / L1 mantenidos | Abrir / cerrar garra |
 
@@ -48,21 +48,22 @@ El robot gira por diferencia de velocidad entre lados; no tiene direccion de aut
 | Trasera izquierda | 9 | Verde, 200 rpm | Normal |
 | Delantera derecha | 3 | Verde, 200 rpm | Invertido |
 | Trasera derecha | 4 | Verde, 200 rpm | Invertido |
-| Brazo arriba/abajo | 10 | Rojo supuesto, 100 rpm | Invertido = subir |
+| Brazo arriba/abajo | 10 | Rojo (fuerza) confirmado, 100 rpm | Invertido = subir |
 | Garra abrir/cerrar | 5 | Rojo confirmado, 100 rpm | Normal = abrir |
 
 Asignacion de puertos confirmada: drivetrain 8,9,3,4; brazo 10; pinza 5.
 Las ruedas siguen agrupadas por el orden indicado: 8/9 izquierda y 3/4 derecha.
-Los lados, sentidos de montaje y cartucho del brazo requieren comprobacion fisica.
+Los lados y sentidos de montaje requieren comprobacion fisica.
 Ajusta todo en `include/robot-config.h`; brazo y garra tienen ajustes independientes.
 
 ## Brazo y garra
 
-Brazo: hasta 35 % de velocidad y cuatro segundos de movimiento continuo.
-Garra: 30 % de velocidad y 1,2 segundos de movimiento continuo.
-Ambos usan un limite inicial de torque del 70 % y retencion al soltar el mando.
-Una velocidad medida inferior a 5 % durante 400 ms detiene el mecanismo.
-Una temperatura de al menos 55 grados C bloquea movimiento y usa freno en lugar de
+Brazo: hasta 35 % de velocidad, cuatro segundos de movimiento continuo y torque del 70 % al moverse; al soltar el mando se bloquea con hold al 50 %.
+Al volver a mover el mando el bloqueo se libera y el motor sigue la orden.
+Garra: 80 % de velocidad y 100 % de torque, sin limite de tiempo, atasco ni temperatura;
+al soltar R1/L1 retiene con hold al 80 %.
+En el brazo, una velocidad medida inferior a 5 % durante 400 ms lo detiene en freno pasivo.
+Una temperatura de al menos 50 grados C bloquea movimiento y usa freno en lugar de
 retencion. Tras un bloqueo, devuelve el mando a reposo; si hay temperatura elevada,
 espera tambien a que enfrie. Invertir el mando sin soltarlo no evade el bloqueo.
 
@@ -81,8 +82,8 @@ La retencion puede consumir corriente; X es una parada de software, no un corte 
 
 La logica de control esta separada del SDK y del hardware. No se agregaron interfaces
 virtuales ni jerarquias de clases. Nuestro ciclo utiliza tiempo O(1), memoria O(1)
-y ninguna asignacion dinamica. Espera 20 ms entre iteraciones (hasta 50 Hz) y escribe
-la pantalla cada diez ciclos. El tiempo de respuesta fisico depende del SDK y firmware.
+y ninguna asignacion dinamica. Espera 10 ms entre iteraciones (hasta 100 Hz); la pantalla
+se dibuja en un hilo aparte cada 200 ms. El tiempo de respuesta fisico depende del SDK y firmware.
 
 ## Compilar y probar
 
@@ -101,7 +102,7 @@ de entradas; tambien atasco, tiempo maximo, temperatura y rearme de mecanismos.
 
 ## Cargar mas tarde
 
-1. Verifica el cartucho del brazo y el cableado, en especial los lados de las ruedas.
+1. Verifica el cableado, en especial los lados de las ruedas.
 2. Conecta por USB el Brain encendido o el control enlazado al Brain encendido.
 3. Si Linux bloquea el dispositivo, ejecuta `sudo sh tools/habilitar-usb.sh` y reconecta.
 4. Compila y selecciona una ranura libre en VEX. Download reemplaza la ranura elegida.
