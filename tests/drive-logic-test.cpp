@@ -22,28 +22,50 @@ int main() {
 
   Controller driver;
   Output out = settle(driver, {100, 0, false, false});
-  assert(out.left == 60 && out.right == 60);
+  assert(out.left == 50 && out.right == 50);
   out = settle(driver, {100, 0, true, false});
   assert(out.left == 100 && out.right == 100);
   out = settle(driver, {-100, 0, true, false});
-  assert(out.left == -45 && out.right == -45);
+  assert(out.left == -40 && out.right == -40);
   out = settle(driver, {100, 0, true, true});
   assert(out.left == 35 && out.right == 35);
   out = settle(driver, {0, 0, true, false});
   assert(out.left == 0 && out.right == 0);
   out = settle(driver, {0, 100, false, false});
-  assert(out.left == 50 && out.right == -50);
+  assert(out.left == 40 && out.right == -40);
   out = settle(driver, {0, -100, false, false});
-  assert(out.left == -50 && out.right == 50);
+  assert(out.left == -40 && out.right == 40);
   out = settle(driver, {0, 100, false, true});
   assert(out.left == 35 && out.right == -35);
 
+  settle(driver, {100, 0, true, false});
+  out = driver.update({0, 0, true, false});
+  assert(out.left == 0 && out.right == 0);
+
   driver.reset();
   out = driver.update({100, 0, false, false});
-  assert(out.left == 15 && out.right == 15);
+  assert(out.left == 6 && out.right == 6);
   driver.reset();
   out = driver.update({0, 100, false, false});
   assert(out.left == 30 && out.right == -30);
+  double peak = 0;
+  for (int i = 1; i < driving::boostTicks; ++i) {
+    out = driver.update({0, 100, false, false});
+    if (out.left > peak) peak = out.left;
+  }
+  assert(peak == driving::boostLimit);
+  out = settle(driver, {0, 100, false, false});
+  assert(out.left == 40 && out.right == -40);
+  driver.reset();
+  out = driver.update({0, 100, false, false}, false);
+  assert(out.left == 14 && out.right == -14);
+  out = settle(driver, {0, 100, true, false});
+  assert(out.left == 40 && out.right == -40);
+  driver.reset();
+  driver.update({0, 100, false, false});
+  driver.update({0, 0, false, false});
+  out = driver.update({0, -100, false, false});
+  assert(out.left == -14 && out.right == 14);
   settle(driver, {100, 0, false, false});
   bool passedZero = false;
   for (int i = 0; i < 100; ++i) {
@@ -70,8 +92,8 @@ int main() {
                 bool(seed & 4), bool(seed & 16)};
     out = driver.update(input);
     const double throttle = driving::axis(input.throttle);
-    const double limit = input.precision ? 35 : throttle < 0 ? 45 :
-                         input.sprint && throttle > 0 ? 100 : 60;
+    const double limit = input.precision ? 35 :
+                         input.sprint && throttle > 0 ? 100 : driving::boostLimit;
     assert(std::isfinite(out.left) && std::isfinite(out.right));
     assert(std::abs(out.left) <= limit + 1e-9 && std::abs(out.right) <= limit + 1e-9);
   }

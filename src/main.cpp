@@ -42,7 +42,7 @@ class DriveTrain {
  private:
   static void command(motor_group& group, bool& spinning, double speed) {
     if (driving::magnitude(speed) < 0.01) {
-      if (spinning) { group.stop(coast); spinning = false; }
+      if (spinning) { group.stop(brake); spinning = false; }
     } else {
       group.spin(forward, speed, percent);
       spinning = true;
@@ -177,8 +177,8 @@ int main() {
         clawLock = 2;
       }
     } else {
-      const bool allowSprint = sprint && !wheels.hot();
-      wheels.apply(driver.update({throttle, steering, allowSprint, Remote.ButtonA.pressing()}));
+      const bool cool = !wheels.hot();
+      wheels.apply(driver.update({throttle, steering, sprint && cool, Remote.ButtonA.pressing()}, cool));
       double armCommand = driving::axis(armAxis) * config::armSpeed;
       if (driving::magnitude(armCommand) < 5) armCommand = 0;
       arm.update(armCommand);

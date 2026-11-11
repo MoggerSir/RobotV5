@@ -21,47 +21,59 @@ inline double axis(int value) {
   return 0.65 * normalized + 0.35 * normalized * normalized * normalized;
 }
 
+constexpr double normalLimit = 50;
+constexpr double reverseLimit = 40;
+constexpr double precisionLimit = 35;
+constexpr double sprintLimit = 100;
+constexpr double spinTurnLimit = 40;
+constexpr double boostLimit = 75;
+constexpr int boostTicks = 25;
+constexpr int boostCooldownTicks = 50;
+
 class Controller {
  public:
   void reset() { speed_ = 0; turn_ = 0; boostTicks_ = 0; cooldown_ = 0; }
-  Output update(const Input& input) {
+  Output update(const Input& input, bool cool = true) {
     const double throttle = axis(input.throttle);
     const double steering = axis(input.steering);
-    const double limit = input.precision ? 35 : throttle < 0 ? 45 :
-                         input.sprint && throttle > 0 ? 100 : 60;
+    if (cooldown_ > 0) --cooldown_;
+    if (throttle == 0 && steering == 0) {
+      speed_ = 0; turn_ = 0; boostTicks_ = 0;
+      return {0, 0};
+    }
+    const double limit = input.precision ? precisionLimit : throttle < 0 ? reverseLimit :
+                         input.sprint && throttle > 0 ? sprintLimit : normalLimit;
     double target = throttle * limit;
     const bool changingDirection = speed_ * target < 0;
     if (changingDirection) target = 0;
 
-    const double baseTurnLimit = throttle == 0 ? (input.precision ? 35 : 50) : limit * 0.85;
-    const double rawTurnTarget = steering * baseTurnLimit;
-
-    if (cooldown_ > 0) --cooldown_;
-    if (!input.precision && cooldown_ == 0 &&
-        (magnitude(rawTurnTarget - turn_) > 14 || (!changingDirection && magnitude(target - speed_) > 18))) {
-      boostTicks_ = 4;
-      cooldown_ = 16;
+    const bool newTurn = steering != 0 && turn_ * steering <= 0;
+    if (cool && !input.precision && cooldown_ == 0 && (newTurn || changingDirection)) {
+      boostTicks_ = boostTicks;
+      cooldown_ = boostTicks + boostCooldownTicks;
     }
+    if (!cool || input.precision) boostTicks_ = 0;
     const bool boosting = boostTicks_ > 0;
     if (boosting) --boostTicks_;
 
-    const double turnLimit = boosting && throttle == 0 ? limit : baseTurnLimit;
-    const double turnTarget = steering * turnLimit;
+    const double cap = boosting && boostLimit > limit ? boostLimit : limit;
+    const double turnLimit = throttle == 0 ? (input.precision ? precisionLimit : boosting ? cap : spinTurnLimit)
+                                           : cap * 0.85;
     const double rate = changingDirection ? 12 :
                         magnitude(target) < magnitude(speed_) ? 9 : (boosting ? 15 : 6);
     const double turnRate = boosting ? 30 : 14;
 
     speed_ = approach(speed_, target, rate);
-    turn_ = approach(turn_, turnTarget, turnRate);
-    if (turn_ > limit) turn_ = limit;
-    else if (turn_ < -limit) turn_ = -limit;
+    turn_ = approach(turn_, steering * turnLimit, turnRate);
+    if (turn_ > cap) turn_ = cap;
+    else if (turn_ < -cap) turn_ = -cap;
 
     const double clampedSpeed = speed_ > limit ? limit : speed_ < -limit ? -limit : speed_;
     Output result{clampedSpeed + turn_, clampedSpeed - turn_};
-    const double over = result.left > limit ? result.left - limit :
-                        result.right > limit ? result.right - limit :
-                        result.left < -limit ? result.left + limit :
-                        result.right < -limit ? result.right + limit : 0;
+    const double over = result.left > cap ? result.left - cap :
+                        result.right > cap ? result.right - cap :
+                        result.left < -cap ? result.left + cap :
+                        result.right < -cap ? result.right + cap : 0;
     result.left -= over;
     result.right -= over;
     return result;

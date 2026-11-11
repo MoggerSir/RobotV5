@@ -30,12 +30,13 @@ de la pinza aun no tiene causa confirmada.
 | R1 / L1 mantenidos | Abrir / cerrar garra |
 
 R2 solo no acelera y no aumenta la velocidad de reversa. L2 queda libre.
-Soltar el joystick izquierdo desacelera hacia cero; para frenar de inmediato pulsa X.
+Soltar el joystick izquierdo frena las ruedas al instante con freno pasivo (brake), sin consumo de bateria.
 Si se pierde el enlace o falta uno de los seis motores, se bloquea el manejo.
 B rearma solo al recuperar el enlace y con los mandos en reposo.
 
-Limites de orden de velocidad: normal 60 %, sprint 100 %, reversa 45 %, lento 35 %,
-giro parado 35 %. Zona muerta central y curva progresiva en los joysticks.
+Limites de orden de velocidad: normal 50 %, sprint 100 % (solo con R2), reversa 40 %, lento 35 %,
+giro parado 40 %. Al empezar un giro o invertir la marcha hay un impulso de 250 ms
+hasta 75 %, con 500 ms de descanso; A lo cancela y se desactiva si una rueda llega a 50 grados C. Zona muerta central y curva progresiva en los joysticks.
 La aceleracion usa una rampa; al invertir marcha la orden longitudinal pasa por cero.
 La velocidad fisica real depende de los motores, carga, ruedas y bateria.
 El robot gira por diferencia de velocidad entre lados; no tiene direccion de automovil.
