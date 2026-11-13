@@ -57,31 +57,24 @@ class DriveTrain {
 
 class MotorMechanism {
  public:
-  MotorMechanism(motor& device, int maxRunMs, int moveTorque, int holdTorque) : device_(device),
+  MotorMechanism(motor& device, int moveTorque, int holdTorque) : device_(device),
       moveTorque_(moveTorque), holdTorque_(holdTorque),
-      protection_(maxRunMs, config::stallMs, config::tickMs, config::maxTemperatureC) {}
+      monitor_(config::stallMs, config::tickMs, config::maxTemperatureC) {}
   void disable() {
-    protection_.disable();
+    check(0);
     lock(true);
   }
-  const char* status() const {
-    switch (protection_.state()) {
-      case mechanism::State::ready: return "LISTA";
-      case mechanism::State::releaseRequired: return "SOLTAR";
-      case mechanism::State::timedOut: return "TIEMPO";
-      case mechanism::State::stalled: return "ATASCO";
-      case mechanism::State::hot: return "CALOR";
-    }
-    return "DESC";
-  }
+  mechanism::Alert alert() const { return alert_; }
   void update(double command) {
-    const mechanism::Output output = protection_.update(
-        command, device_.velocity(percent), device_.temperature(celsius));
-    if (output.speed == 0) lock(output.hot);
-    else move(output.speed);
+    check(command);
+    if (command == 0) lock(false);
+    else move(command);
   }
  private:
   enum class Lock { none, hold, brake };
+  void check(double command) {
+    alert_ = monitor_.update(command, device_.velocity(percent), device_.temperature(celsius));
+  }
   void lock(bool passiveBrake) {
     if (!device_.installed()) { locked_ = Lock::none; return; }
     const Lock wanted = passiveBrake ? Lock::brake : Lock::hold;
@@ -99,7 +92,8 @@ class MotorMechanism {
   }
   motor& device_;
   const int moveTorque_, holdTorque_;
-  mechanism::Protection protection_;
+  mechanism::Monitor monitor_;
+  mechanism::Alert alert_ = mechanism::Alert::none;
   Lock locked_ = Lock::none;
 };
 
@@ -108,13 +102,41 @@ struct Telemetry {
   volatile bool connected = false, hardwareReady = false, stopped = false, neutral = false;
   volatile bool frontLeft = false, rearLeft = false, frontRight = false, rearRight = false;
   volatile bool armReady = false, clawReady = false, open = false, close = false;
-  const char* armStatus = "LISTA";
+  volatile int armAlert = 0;
   const char* clawStatus = "LISTA";
 } telemetry;
 
+void showArmAlert(int alert, double temperature) {
+  Remote.Screen.clearLine(3);
+  Remote.Screen.setCursor(3, 1);
+  if (alert == int(mechanism::Alert::hot)) Remote.Screen.print("BRAZO CALIENTE %2.0fC", temperature);
+  else if (alert == int(mechanism::Alert::stalled)) Remote.Screen.print("BRAZO TRABADO");
+}
+
 void screenLoop() {
   this_thread::setPriority(thread::threadPrioritylow);
+  int shownAlert = 0;
+  uint32_t alertSince = 0, lastRumble = 0;
   while (true) {
+    const uint32_t now = Brain.Timer.time();
+    const int alert = telemetry.armAlert;
+    const double armTemperature = ArmMotor.temperature(celsius);
+    if (alert != 0 && alert != shownAlert) {
+      shownAlert = alert;
+      alertSince = now;
+      lastRumble = now;
+      Remote.rumble("-.-");
+      showArmAlert(alert, armTemperature);
+    } else if (alert != 0) {
+      alertSince = now;
+      if (now - lastRumble >= 3000) {
+        lastRumble = now;
+        Remote.rumble("-.-");
+      }
+    } else if (shownAlert != 0 && now - alertSince >= 2000) {
+      shownAlert = 0;
+      showArmAlert(0, armTemperature);
+    }
     Brain.Screen.printAt(10, 115, true, "%-38s", !telemetry.connected ? "SIN CONTROL" :
         !telemetry.hardwareReady ? "FALTA MOTOR: revisa puertos" :
         telemetry.stopped ? "FRENADO: B con mandos en reposo" : "LISTO PARA MANEJAR");
@@ -124,9 +146,16 @@ void screenLoop() {
     Brain.Screen.printAt(10, 165, "8:%d 9:%d 3:%d 4:%d 10:%d 5:%d    ",
         int(telemetry.frontLeft), int(telemetry.rearLeft), int(telemetry.frontRight),
         int(telemetry.rearRight), int(telemetry.armReady), int(telemetry.clawReady));
-    Brain.Screen.printAt(10, 190, "BRAZO T:%2.0fC %-7s | PINZA T:%2.0fC %-7s   ",
-        ArmMotor.temperature(celsius), telemetry.armStatus,
-        ClawMotor.temperature(celsius), telemetry.clawStatus);
+    if (shownAlert != 0) {
+      Brain.Screen.setPenColor(color::red);
+      if (shownAlert == int(mechanism::Alert::hot))
+        Brain.Screen.printAt(10, 190, true, "ALERTA BRAZO: SOBRECALENTAMIENTO %2.0fC  ", armTemperature);
+      else Brain.Screen.printAt(10, 190, true, "%-38s", "ALERTA BRAZO: ESTA TRABADO");
+      Brain.Screen.setPenColor(color::white);
+    } else {
+      Brain.Screen.printAt(10, 190, true, "BRAZO T:%2.0fC OK | PINZA T:%2.0fC %-8s",
+          armTemperature, ClawMotor.temperature(celsius), telemetry.clawStatus);
+    }
     if (telemetry.neutral) Brain.Screen.printAt(10, 215, true, "%-38s", "Mandos centrados: B puede rearmar");
     else Brain.Screen.printAt(10, 215, true, "R1:%d L1:%d | X frena, B rearma       ",
         int(telemetry.open), int(telemetry.close));
@@ -137,7 +166,7 @@ void screenLoop() {
 int main() {
   this_thread::setPriority(thread::threadPriorityHigh);
   DriveTrain wheels;
-  MotorMechanism arm(ArmMotor, config::armMaxRunMs, config::armTorque, config::armHoldTorque);
+  MotorMechanism arm(ArmMotor, config::armTorque, config::armHoldTorque);
   driving::Controller driver;
   bool stopped = false;
   int clawLock = 0;
@@ -210,7 +239,7 @@ int main() {
     telemetry.clawReady = clawReady;
     telemetry.open = open;
     telemetry.close = close;
-    telemetry.armStatus = arm.status();
+    telemetry.armAlert = int(arm.alert());
     telemetry.clawStatus = open != close ? (open ? "ABRIENDO" : "CERRANDO") : "DIRECTA";
 
     wait(config::tickMs, msec);

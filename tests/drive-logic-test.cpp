@@ -98,31 +98,17 @@ int main() {
     assert(std::abs(out.left) <= limit + 1e-9 && std::abs(out.right) <= limit + 1e-9);
   }
 
-  mechanism::Protection claw(1200, 400, 20, 55);
-  assert(claw.update(30, 0, 20).speed == 0);
-  claw.update(0, 0, 20);
-  assert(claw.update(30, 20, 20).speed == 30);
-  for (int i = 0; i < 19; ++i) assert(claw.update(30, 0, 20).speed == 30);
-  auto stalledOut = claw.update(30, 0, 20);
-  assert(stalledOut.speed == 0 && stalledOut.hot);
-  assert(claw.state() == mechanism::State::stalled);
-  assert(claw.update(-30, 20, 20).speed == 0);
-  claw.update(0, 0, 20);
-  for (int i = 0; i < 59; ++i) assert(claw.update(-30, -20, 20).speed == -30);
-  assert(claw.update(-30, -20, 20).speed == 0);
-  assert(claw.state() == mechanism::State::timedOut);
-  claw.update(0, 0, 20);
-  auto hot = claw.update(30, 20, 55);
-  assert(hot.speed == 0 && hot.hot);
-  assert(claw.state() == mechanism::State::hot);
-  assert(claw.update(30, 20, 50).speed == 0);
-  claw.update(0, 0, 50);
-  assert(claw.update(30, 20, 50).speed == 30);
-  claw.disable();
-  assert(claw.update(30, 20, 20).speed == 0);
-
-  mechanism::Protection arm(4000, 400, 20, 55);
-  arm.update(0, 0, 20);
-  for (int i = 0; i < 199; ++i) assert(arm.update(35, 20, 20).speed == 35);
-  assert(arm.update(35, 20, 20).speed == 0);
+  using mechanism::Alert;
+  mechanism::Monitor arm(400, 20, 50);
+  assert(arm.update(35, 0, 20) == Alert::none);
+  for (int i = 0; i < 18; ++i) assert(arm.update(35, 0, 20) == Alert::none);
+  assert(arm.update(35, 0, 20) == Alert::stalled);
+  for (int i = 0; i < 1000; ++i) assert(arm.update(35, 0, 20) == Alert::stalled);
+  assert(arm.update(35, 20, 20) == Alert::none);
+  for (int i = 0; i < 1000; ++i) assert(arm.update(35, 20, 20) == Alert::none);
+  for (int i = 0; i < 30; ++i) arm.update(-35, 0, 20);
+  assert(arm.update(0, 0, 20) == Alert::none);
+  assert(arm.update(0, 0, 50) == Alert::hot);
+  for (int i = 0; i < 30; ++i) assert(arm.update(35, 0, 55) == Alert::hot);
+  assert(arm.update(35, 0, 45) == Alert::stalled);
 }

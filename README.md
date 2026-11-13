@@ -59,27 +59,30 @@ Ajusta todo en `include/robot-config.h`; brazo y garra tienen ajustes independie
 
 ## Brazo y garra
 
-Brazo: hasta 35 % de velocidad, cuatro segundos de movimiento continuo y torque del 70 % al moverse; al soltar el mando se bloquea con hold al 50 %.
+Brazo: hasta 35 % de velocidad y torque del 70 % al moverse, sin limite de tiempo; al soltar el mando se bloquea con hold al 50 %.
 Al volver a mover el mando el bloqueo se libera y el motor sigue la orden.
 Garra: 80 % de velocidad y 100 % de torque, sin limite de tiempo, atasco ni temperatura;
 al soltar R1/L1 retiene con hold al 80 %.
-En el brazo, una velocidad medida inferior a 5 % durante 400 ms lo detiene en freno pasivo.
-Una temperatura de al menos 50 grados C bloquea movimiento y usa freno en lugar de
-retencion. Tras un bloqueo, devuelve el mando a reposo; si hay temperatura elevada,
-espera tambien a que enfrie. Invertir el mando sin soltarlo no evade el bloqueo.
+El brazo no tiene protecciones que lo apaguen: nunca se detiene ni pierde fuerza por codigo.
+En su lugar avisa. Si el motor llega a 50 grados C, el Brain muestra en rojo
+"ALERTA BRAZO: SOBRECALENTAMIENTO" con la temperatura; si se le ordena mover y gira a menos
+de 5 % durante 400 ms, muestra "ALERTA BRAZO: ESTA TRABADO". El aviso tambien aparece
+en la pantalla del control, que vibra al empezar y cada 3 s mientras dure. El Brain V5 no
+tiene bocina programable, por eso el aviso sonoro es la vibracion del control.
+El firmware del motor (VEXos) sigue reduciendo corriente por su cuenta si se calienta mucho;
+eso no se puede desactivar desde el programa.
 
 Estos valores requieren calibracion con la mecanica real. No hay finales de carrera
-ni limites de posicion absoluta: las protecciones de tiempo y atasco no garantizan
-que el mecanismo no llegue a un tope ni limitan de forma fiable la fuerza de apriete.
+ni limites de posicion absoluta: nada impide que el mecanismo empuje contra un tope.
 La retencion puede consumir corriente; X es una parada de software, no un corte electrico.
 
 ## Archivos
 
 - `include/robot-config.h`: cableado, cartuchos, sentidos y limites.
 - `include/drive-logic.h`: curva de joystick, rampas, sprint y mezcla de ruedas.
-- `include/mechanism-logic.h`: proteccion comun del brazo y la garra.
+- `include/mechanism-logic.h`: deteccion de calor y atasco del brazo para las alertas.
 - `src/main.cpp`: lectura del control, motores y bloqueo/rearme.
-- `tests/drive-logic-test.cpp`: pruebas de conduccion y protecciones de mecanismos.
+- `tests/drive-logic-test.cpp`: pruebas de conduccion y de las alertas del brazo.
 
 La logica de control esta separada del SDK y del hardware. No se agregaron interfaces
 virtuales ni jerarquias de clases. Nuestro ciclo utiliza tiempo O(1), memoria O(1)
@@ -99,7 +102,7 @@ g++ -std=c++11 -Wall -Wextra -Werror -I include tests/drive-logic-test.cpp -o /t
 
 Se verificaron limites, simetria del giro, zona muerta, rampas, inversion pasando por
 cero, sprint solo hacia adelante, prioridad del modo lento y 100 000 combinaciones
-de entradas; tambien atasco, tiempo maximo, temperatura y rearme de mecanismos.
+de entradas; tambien la deteccion de atasco y temperatura del brazo.
 
 ## Cargar mas tarde
 

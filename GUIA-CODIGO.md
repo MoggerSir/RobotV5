@@ -11,7 +11,7 @@ El código no lleva comentarios: esta guía explica qué hace cada parte.
 | `src/main.cpp` | Lee el mando, comprueba si puede moverse y da órdenes a los motores. |
 | `include/robot-config.h` | Contiene puertos, cartuchos, sentidos y límites de cada mecanismo. |
 | `include/drive-logic.h` | Convierte el joystick izquierdo en velocidad de cada lado del robot. |
-| `include/mechanism-logic.h` | Decide si brazo y pinza pueden moverse o deben parar por una protección. |
+| `include/mechanism-logic.h` | Detecta si el brazo está caliente o trabado para mostrar una alerta, sin detenerlo. |
 | `include/vex.h` | Reúne las bibliotecas oficiales de VEX y algunas ayudas de la plantilla. |
 | `tests/drive-logic-test.cpp` | Simula entradas y comprueba las cuentas en la computadora, sin mover motores. |
 | `makefile` | Indica qué archivos se deben compilar y cuál es el resultado principal. |
@@ -25,11 +25,11 @@ El código no lleva comentarios: esta guía explica qué hace cada parte.
 ## Qué ocurre al ejecutar RobotV5
 
 1. Se crean las representaciones del Brain, el mando y los seis motores.
-2. `main()` prepara los grupos de ruedas, la protección del brazo y el hilo que dibuja la pantalla.
+2. `main()` prepara los grupos de ruedas, el monitor del brazo y el hilo que dibuja la pantalla.
 3. El robot arranca habilitado. **X** frena y bloquea; para rearmar se pulsa **B**,
    con los joysticks centrados y R1/L1/R2 sueltos.
 4. El bucle lee el mando y comprueba que sigan presentes el control y los seis motores.
-5. Si está habilitado, calcula la velocidad de ruedas, consulta la protección del brazo y mueve la pinza directamente.
+5. Si está habilitado, calcula la velocidad de ruedas, mueve el brazo, revisa sus alertas y mueve la pinza directamente.
 6. Comparte el estado con el hilo de pantalla, que lo dibuja cada 200 ms; el control espera 10 milisegundos y repite.
 
 Que el programa compile o que un motor aparezca detectado no demuestra que su
@@ -47,7 +47,7 @@ pinza sigue pendiente de comprobar físicamente.
 | `void` | La función realiza una tarea pero no devuelve un resultado. |
 | `return` | Entrega un resultado y sale de la función. |
 | `struct` | Reúne datos relacionados, como los valores recibidos del mando. |
-| `class` | Reúne datos y funciones, como los grupos de ruedas o la protección de un mecanismo. |
+| `class` | Reúne datos y funciones, como los grupos de ruedas o el monitor del brazo. |
 | Constructor | Función que prepara un objeto en el momento de crearlo. |
 | `public`, `private` | Lo que puede usarse desde fuera de una clase y lo que queda reservado dentro. |
 | `namespace` y `::` | Agrupan nombres: `config::armSpeed` es el ajuste `armSpeed` del grupo `config`. |
@@ -87,7 +87,7 @@ una latencia física exacta: las llamadas al SDK y el funcionamiento del Brain t
 
 - Un motor está en otro puerto o gira al revés: revisa `robot-config.h`.
 - Aceleración, sprint, reversa o giro: revisa `drive-logic.h`.
-- Tiempo de movimiento, atasco o temperatura: los valores están en `robot-config.h`
+- Umbral de atasco o temperatura de las alertas: los valores están en `robot-config.h`
   y las comprobaciones en `mechanism-logic.h`.
 - Botones, ejes, mensajes o condición de rearme: revisa `main.cpp`.
 - Los archivos `vex/*.mk` son soporte del SDK; no son ajustes para conducir.

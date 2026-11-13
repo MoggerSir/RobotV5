@@ -25,8 +25,6 @@ constexpr int armHoldTorque = 50;
 constexpr int clawSpeed = 80;
 constexpr int clawTorque = 100;
 constexpr int clawHoldTorque = 80;
-constexpr int armMaxRunMs = 4000;
-constexpr int clawMaxRunMs = 1200;
 constexpr int stallMs = 400;
 constexpr double maxTemperatureC = 50.0;
 }
